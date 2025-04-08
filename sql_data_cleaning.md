@@ -10,8 +10,8 @@
 |customer_id|nvarchar|99441|99441|0|0.00|
 |order_status|nvarchar|99441|99441|0|0.00|
 |order_purchase_timestamp|datetime2|99441|99441|0|0.00|
-|order_approved_at|datetime2|99441|99295|146|0.15|
-|order_delivered_carrier_date|datetime2|99441|97659|1782|1.79|
+|order_approved_at|datetime2|99441|99281|160|0.16|
+|order_delivered_carrier_date|datetime2|99441|97658|1783|1.79|
 |order_delivered_customer_date|datetime2|99441|96476|2965|2.98|
 |order_estimated_delivery_date|datetime2|99441|99441|0|0.00|
 
@@ -56,8 +56,8 @@
 |review_id|nvarchar|99224|99224|0|0.00|
 |order_id|nvarchar|99224|99224|0|0.00|
 |review_score|tinyint|99224|99224|0|0.00|
-|review_comment_title|nvarchar|99224|99224|0|0.00|
-|review_comment_message|nvarchar|99224|99224|0|0.00|
+|review_comment_title|nvarchar|99224|11566|87658|88.34|
+|review_comment_message|nvarchar|99224|40968|58256|58.71|
 |review_creation_date|datetime2|99224|99224|0|0.00|
 |review_answer_timestamp|datetime2|99224|99224|0|0.00|
 
@@ -84,7 +84,7 @@
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
 |product_id|nvarchar|32951|32951|0|0.00|
-|product_category_name|nvarchar|32951|32951|0|0.00|
+|product_category_name|nvarchar|32951|32341|610|1.85|
 |product_name_lenght|tinyint|32951|32341|610|1.85|
 |product_description_lenght|smallint|32951|32341|610|1.85|
 |product_photos_qty|tinyint|32951|32341|610|1.85|
