@@ -1,12 +1,15 @@
 # SQL DATA CLEANING
 
-## 1. 
+## I. Individual Table Data Cleaning
+
+The following two sets of SQL queries are used to perform an **overview data quality check** on the tables in the **Olist e-commerce relational database**. These checks cover key aspects such as **data types**, **null values**, and **duplicates**, providing a foundational understanding of the data's reliability before analysis.
 
 <img src="https://github.com/user-attachments/assets/4e006179-b907-4618-acb6-be83a62f951c" width="500"/>
-<img src="https://github.com/user-attachments/assets/57f09350-2b26-408b-b34e-a845cba00822" width="424"/>
+<img src="https://github.com/user-attachments/assets/57f09350-2b26-408b-b34e-a845cba00822" width="422.8"/>
 
-## 1.1. table: orders
+## 1. table: orders
 
+**Table 1:** Data Type and Null Value Check: orders Table
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
 |order_id|nvarchar|99441|99441|0|0.00|
@@ -18,10 +21,20 @@
 |order_delivered_customer_date|datetime2|99441|96476|2965|2.98|
 |order_estimated_delivery_date|datetime2|99441|99441|0|0.00|
 
+**Table 2:** Duplicates Check: orders Table
 |Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
 |---|---|---|
 |99441|99441|UNIQUE|
 
+The orders table has valid data types for all columns and no duplicated entries. However, **three columns contain NULL values**: **order_approved_at (0.16%)**, **order_delivered_carrier_date (1.79%)**, and **order_delivered_customer_date (2.98%)**. These missing values need to be addressed.
+
+### 1.1. Addressing missing value: order_approved_at column
+For the order_approved_at column, NULL values fall into **three statuses**:
+- **Canceled (141 orders):** These orders were canceled, so it's reasonable that the approval timestamp is missing. (NULL is acceptable)
+- **Created (5 orders):** These orders are still in progress and have not yet reached the approval stage. (NULL is acceptable)
+- **Delivered (14 orders):** These orders were already delivered to customers, but the approval timestamp is still NULL — indicating a data inconsistency (NULL is **not acceptable** and needs to be addressed).
+
+**Table 3:** Missing value’s order_approved_at when order_status is 'delivered'
 |order_id|customer_id|order_status|order_purchase_timestamp|order_approved_at|order_delivered_carrier_date|order_delivered_customer_date|order_estimated_delivery_date|
 |---|---|---|---|---|---|---|---|
 |e04abd8149ef81b95221e88f6ed9ab6a|2127dc6603ac33544953ef05ec155771|delivered|2017-02-18 14:40:00.0000000|NULL|2017-02-23 12:04:47.0000000|2017-03-01 13:25:33.0000000|2017-03-17 00:00:00.0000000|
@@ -39,18 +52,47 @@
 |3c0b8706b065f9919d0505d3b3343881|d85919cb3c0529589c6fa617f5f43281|delivered|2017-02-17 15:53:27.0000000|NULL|2017-02-22 11:31:30.0000000|2017-03-03 11:47:47.0000000|2017-03-23 00:00:00.0000000|
 |2babbb4b15e6d2dfe95e2de765c97bce|74bebaf46603f9340e3b50c6b086f992|delivered|2017-02-18 17:15:03.0000000|NULL|2017-02-22 11:23:11.0000000|2017-03-03 18:43:43.0000000|2017-03-31 00:00:00.0000000|
 
+To handle these NULL values, I will estimate the missing order_approved_at timestamps by adding the average time difference between order_purchase_timestamp and order_approved_at (**avg_approve_hour**) during the corresponding month — January or February — to each missing value’s order_approved_at.
+
+This approach is based on the following observations:
+- The orders with missing approval timestamps were created only in January and February 2017 (see **Table 3**).
+- The average time between order_purchase_timestamp and order_approved_at remains relatively stable across months, excluding some outliers (see ReadME.md and Figure ...).
+- There is no significant difference in this time gap between orders delivered late and those delivered on time (see **Table 4**).
+
+<div align="center">
+
+  ![image](https://github.com/user-attachments/assets/8401df14-219e-4a6c-8669-70f08ec822c5)
+  
+  **Figure 1:** Trend of Average Approval Time (in Hours) Over Time
+
+</div>
+
+**Table 4:** avg_approve_hour comparison between on-time-delivered orders and late-delivered orders
 |delivery_status|avg_approve_hour|
 |---|---|
 |late|12|
 |ontime|10|
 
+### 1.2. Addressing missing value: order_delivered_carrier_date column
 
+For the column order_delivered_carrier_date, NULL values fall into the following categories:
+- **Canceled, Unavailable (1,159 orders):** Orders were canceled by customers or due to stock unavailability, so the absence of delivery information is valid.
+- **Created, Invoiced, Processing, Approved (622 orders):** Orders are still in the processing stage and have not yet reached the delivery stage, so NULL values are considered valid.
+- **Delivered (2 orders):** These orders were marked as delivered, but their delivery-to-carrier dates are missing (see **Table 5**). These NULLs are considered invalid and need to be addressed.
+
+Since only two orders are affected, they will be handled as follows:
+- One of the orders is missing delivery information but marked as **"delivered"** from **as early as May 25, 2017**. Due to the inconsistency and outdated nature, **it will be reclassified as canceled**.
+- The other order will be imputed by adding the average duration from **order_approved_at** to **order_delivered_carrier_date** (**avg_carrier_hour**) for September 2017, as the order was created during this period.
+
+**Table 5:** Missing value’s order_delivered_carrier_date when order_status is 'delivered'
 |order_id|customer_id|order_status|order_purchase_timestamp|order_approved_at|order_delivered_carrier_date|order_delivered_customer_date|order_estimated_delivery_date|
 |---|---|---|---|---|---|---|---|
 |2aa91108853cecb43c84a5dc5b277475|afeb16c7f46396c0ed54acb45ccaaa40|delivered|2017-09-29 08:52:58.0000000|2017-09-29 09:07:16.0000000|NULL|2017-11-20 19:44:47.0000000|2017-11-14 00:00:00.0000000|
 |2d858f451373b04fb5c984a1cc2defaf|e08caf668d499a6d643dafd7c5cc498a|delivered|2017-05-25 23:22:43.0000000|2017-05-25 23:30:16.0000000|NULL|NULL|2017-06-23 00:00:00.0000000|
 
-## 1.2. table: order_items
+### 1.2. Addressing missing value: order_delivered_customer_date column
+
+## 2. table: order_items
 
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
