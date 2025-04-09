@@ -56,7 +56,7 @@ To handle these NULL values, I will estimate the missing order_approved_at times
 
 This approach is based on the following observations:
 - The orders with missing approval timestamps were created only in January and February 2017 (see **Table 3**).
-- The average time between order_purchase_timestamp and order_approved_at remains relatively stable across months, excluding some outliers (see ReadME.md and Figure ...).
+- The average time between order_purchase_timestamp and order_approved_at remains relatively stable across months, excluding some outliers (see ReadME.md and **Figure 1**).
 - There is no significant difference in this time gap between orders delivered late and those delivered on time (see **Table 4**).
 
 <div align="center">
