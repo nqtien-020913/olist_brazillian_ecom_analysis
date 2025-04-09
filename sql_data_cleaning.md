@@ -2,6 +2,11 @@
 
 ## 1. 
 
+![image](https://github.com/user-attachments/assets/4e006179-b907-4618-acb6-be83a62f951c)
+
+![image](https://github.com/user-attachments/assets/57f09350-2b26-408b-b34e-a845cba00822)
+
+
 ## 1.1. table: orders
 
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
