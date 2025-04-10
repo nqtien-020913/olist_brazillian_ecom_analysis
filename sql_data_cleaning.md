@@ -4,8 +4,52 @@
 
 The following two sets of SQL queries are used to perform an **overview data quality check** on the tables in the **Olist e-commerce relational database**. These checks cover key aspects such as **data types**, **null values**, and **duplicates**, providing a foundational understanding of the data's reliability before analysis.
 
-<img src="https://github.com/user-attachments/assets/4e006179-b907-4618-acb6-be83a62f951c" width="500"/>
-<img src="https://github.com/user-attachments/assets/57f09350-2b26-408b-b34e-a845cba00822" width="422.8"/>
+```sql
+-- DATA TYPES AND NULL VALUES CHECK
+DECLARE @table_name NVARCHAR(MAX) = 'orders';
+DECLARE @sql NVARCHAR(MAX) = '';
+DECLARE @column_name NVARCHAR(MAX);
+
+SELECT @sql = @sql + '
+SELECT 
+    ''' + COLUMN_NAME + ''' AS Column_Name,
+    ''' + DATA_TYPE + ''' AS Data_Type,
+    COUNT(*) AS Total_Rows,
+    COUNT([' + COLUMN_NAME + ']) AS Non_NULLs,
+    COUNT(*) - COUNT([' + COLUMN_NAME + ']) AS NULLs,
+    CAST(100.0 * (COUNT(*) - COUNT([' + COLUMN_NAME + '])) / COUNT(*) AS DECIMAL(5,2)) AS NULL_Percent
+FROM ' + QUOTENAME(@table_name) + '
+UNION ALL
+'
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = @table_name;
+
+SET @sql = LEFT(@sql, LEN(@sql) - 10);
+EXEC sp_executesql @sql;
+
+-- DUPLICATE_CHECK
+DECLARE @table_name NVARCHAR(MAX) = 'orders';  -- Tên bảng của em
+DECLARE @key_columns NVARCHAR(MAX) = 'order_id'; -- Cột hoặc tổ hợp cột dùng làm khóa chính
+
+DECLARE @sql NVARCHAR(MAX) = '';
+DECLARE @cols_concat NVARCHAR(MAX) = '';
+
+SELECT @cols_concat = STRING_AGG('ISNULL(CAST(' + LTRIM(RTRIM(value)) + ' AS NVARCHAR(MAX)), '''')', ' + ''|'' + ')
+FROM STRING_SPLIT(@key_columns, ',');
+
+SET @sql = '
+SELECT 
+    COUNT(*) AS Total_Rows,
+    COUNT(DISTINCT ' + @cols_concat + ') AS Unique_Key_Combinations,
+    CASE 
+        WHEN COUNT(*) = COUNT(DISTINCT ' + @cols_concat + ')
+        THEN ''UNIQUE''
+        ELSE ''DUPLICATE EXISTS''
+    END AS Key_Uniqueness_Status
+FROM ' + QUOTENAME(@table_name) + ';';
+
+EXEC sp_executesql @sql;
+```
 
 ## 1. table: orders
 
@@ -34,6 +78,13 @@ For the order_approved_at column, NULL values fall into **three statuses**:
 - **Created (5 orders):** These orders are still in progress and have not yet reached the approval stage. (NULL is acceptable)
 - **Delivered (14 orders):** These orders were already delivered to customers, but the approval timestamp is still NULL — indicating a data inconsistency (NULL is **not acceptable** and needs to be addressed).
 
+```sql
+-- Create back-up orders table for processing missing values
+select *
+Into orders_backup
+From orders;
+```
+
 **Table 3:** Missing value’s order_approved_at when order_status is 'delivered'
 |order_id|customer_id|order_status|order_purchase_timestamp|order_approved_at|order_delivered_carrier_date|order_delivered_customer_date|order_estimated_delivery_date|
 |---|---|---|---|---|---|---|---|
@@ -59,6 +110,16 @@ This approach is based on the following observations:
 - The average time between order_purchase_timestamp and order_approved_at remains relatively stable across months, excluding some outliers (see ReadME.md and **Figure 1**).
 - There is no significant difference in this time gap between orders delivered late and those delivered on time (see **Table 4**).
 
+```sql
+select format(order_purchase_timestamp, 'yyyy-MM') as year_month
+    , avg(datediff(hour, order_purchase_timestamp, order_approved_at)) as avg_approve_hour
+from orders2
+where order_approved_at is not null
+group by format(order_purchase_timestamp, 'yyyy-MM')
+order by year_month;
+-- code for Figure 1
+```
+
 <div align="center">
 
   ![image](https://github.com/user-attachments/assets/8401df14-219e-4a6c-8669-70f08ec822c5)
@@ -67,6 +128,23 @@ This approach is based on the following observations:
 
 </div>
 
+```sql
+with table_status AS (
+    select *
+        , format(order_purchase_timestamp, 'yyyy-MM') as year_month
+        , case 
+            when order_delivered_customer_date < order_estimated_delivery_date then 'ontime'
+            else 'late'
+        end as delivery_status
+    from orders
+    where order_delivered_customer_date is not null
+)
+select delivery_status
+    , avg(datediff(hour, order_purchase_timestamp, order_approved_at)) as avg_approve_hour
+from table_status
+group by delivery_status;
+-- code for table 4
+```
 **Table 4:** avg_approve_hour comparison between on-time-delivered orders and late-delivered orders
 |delivery_status|avg_approve_hour|
 |---|---|
@@ -75,7 +153,7 @@ This approach is based on the following observations:
 
 ### 1.2. Addressing missing value: order_delivered_carrier_date column
 
-For the column order_delivered_carrier_date, NULL values fall into the following categories:
+For the column order_delivered_carrier_date, NULL values fall into the following **statuses**:
 - **Canceled, Unavailable (1,159 orders):** Orders were canceled by customers or due to stock unavailability, so the absence of delivery information is valid.
 - **Created, Invoiced, Processing, Approved (622 orders):** Orders are still in the processing stage and have not yet reached the delivery stage, so NULL values are considered valid.
 - **Delivered (2 orders):** These orders were marked as delivered, but their delivery-to-carrier dates are missing (see **Table 5**). These NULLs are considered invalid and need to be addressed.
@@ -90,10 +168,15 @@ Since only two orders are affected, they will be handled as follows:
 |2aa91108853cecb43c84a5dc5b277475|afeb16c7f46396c0ed54acb45ccaaa40|delivered|2017-09-29 08:52:58.0000000|2017-09-29 09:07:16.0000000|NULL|2017-11-20 19:44:47.0000000|2017-11-14 00:00:00.0000000|
 |2d858f451373b04fb5c984a1cc2defaf|e08caf668d499a6d643dafd7c5cc498a|delivered|2017-05-25 23:22:43.0000000|2017-05-25 23:30:16.0000000|NULL|NULL|2017-06-23 00:00:00.0000000|
 
-### 1.2. Addressing missing value: order_delivered_customer_date column
+### 1.3. Addressing missing value: order_delivered_customer_date column
+
+For the column order_delivered_carrier_date, **NULL values** are associated with the following order statuses: Approved, Canceled, Created, Invoiced, Processing, and Unavailable. These statuses represent orders that were either canceled, still in processing, or on the way to the carrier, so the absence of delivery-to-carrier information **is considered valid** in these cases.
 
 ## 2. table: order_items
 
+The **order_items table** meets data quality standards in terms of **data types,** **non-null values**, and **uniqueness of records**.
+
+**Table 6:** Data Type and Null Value Check: order_items Table
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
 |order_id|nvarchar|112650|112650|0|0.00|
@@ -104,12 +187,16 @@ Since only two orders are affected, they will be handled as follows:
 |price|float|112650|112650|0|0.00|
 |freight_value|float|112650|112650|0|0.00|
 
+**Table 7:** Duplicates Check: order_items Table
 |Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
 |---|---|---|
 |112650|112650|UNIQUE|
 
 ## 1.3. table: order_payments
 
+The **order_payments table** meets data quality standards in terms of **data types,** **non-null values**, and **uniqueness of records**.
+
+**Table 8:** Data Type and Null Value Check: order_items Table
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
 |order_id|nvarchar|103886|103886|0|0.00|
@@ -118,6 +205,7 @@ Since only two orders are affected, they will be handled as follows:
 |payment_installments|tinyint|103886|103886|0|0.00|
 |payment_value|float|103886|103886|0|0.00|
 
+**Table 9:** Duplicates Check: order_items Table
 |Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
 |---|---|---|
 |103886|103886|UNIQUE|
@@ -139,6 +227,8 @@ Since only two orders are affected, they will be handled as follows:
 |99224|98673|DUPLICATE EXISTS|
 
 ## 1.5. table: customers
+
+The **customers table** meets data quality standards in terms of **data types,** **non-null values**, and **uniqueness of records**.
 
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
@@ -171,6 +261,8 @@ Since only two orders are affected, they will be handled as follows:
 |32951|32951|UNIQUE|
 
 ## 1.7. table: sellers
+
+The **sellers table** meets data quality standards in terms of **data types,** **non-null values**, and **uniqueness of records**.
 
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
