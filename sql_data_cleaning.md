@@ -79,7 +79,7 @@ For the order_approved_at column, NULL values fall into **three statuses**:
 - **Delivered (14 orders):** These orders were already delivered to customers, but the approval timestamp is still NULL — indicating a data inconsistency (NULL is **not acceptable** and needs to be addressed).
 
 ```sql
--- Create back-up orders table for processing missing values
+-- Create back-up orders table for addressing missing values
 select *
 Into orders_backup
 From orders;
@@ -224,6 +224,23 @@ The **order_payments table** meets data quality standards in terms of **data typ
 |review_answer_timestamp|datetime2|99224|99224|0|0.00|
 
 The **order_reviews table** contains valid data types across all columns. However, two columns, **review_comment_title** and **review_comment_message**, have a high percentage of missing values—approximately **88%** and **59%**, respectively—requiring further handling and consideration.
+
+
+```sql
+-- Address Missing Values of review_comment_title column and review_comment_message column
+UPDATE order_reviews_backup
+SET
+    review_comment_title = case
+                            when (review_comment_title is null) and (review_comment_message is null) then 'just score'
+                            when (review_comment_title is null) and (review_comment_message is not null) then 'non review title'
+                            else review_comment_title
+                        end,
+    review_comment_message = case
+                            when (review_comment_title is null) and (review_comment_message is null) then 'just score'
+                            when (review_comment_title is not null) and (review_comment_message is null) then 'non review message'
+                            else review_comment_message
+                        end
+```
 
 **Table 11:** Duplicates Check: order_payments Table
 |Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
