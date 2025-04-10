@@ -196,7 +196,7 @@ The **order_items table** meets data quality standards in terms of **data types,
 
 The **order_payments table** meets data quality standards in terms of **data types,** **non-null values**, and **uniqueness of records**.
 
-**Table 8:** Data Type and Null Value Check: order_items Table
+**Table 8:** Data Type and Null Value Check: order_payments Table
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
 |order_id|nvarchar|103886|103886|0|0.00|
@@ -205,13 +205,14 @@ The **order_payments table** meets data quality standards in terms of **data typ
 |payment_installments|tinyint|103886|103886|0|0.00|
 |payment_value|float|103886|103886|0|0.00|
 
-**Table 9:** Duplicates Check: order_items Table
+**Table 9:** Duplicates Check: order_payments Table
 |Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
 |---|---|---|
 |103886|103886|UNIQUE|
 
 ## 1.4. table: order_reviews
 
+**Table 10:** Data Type and Null Value Check: order_payments Table
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
 |review_id|nvarchar|99224|99224|0|0.00|
@@ -222,6 +223,9 @@ The **order_payments table** meets data quality standards in terms of **data typ
 |review_creation_date|datetime2|99224|99224|0|0.00|
 |review_answer_timestamp|datetime2|99224|99224|0|0.00|
 
+The **order_reviews table** contains valid data types across all columns. However, two columns, **review_comment_title** and **review_comment_message**, have a high percentage of missing values—approximately **88%** and **59%**, respectively—requiring further handling and consideration.
+
+**Table 11:** Duplicates Check: order_payments Table
 |Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
 |---|---|---|
 |99224|98673|DUPLICATE EXISTS|
@@ -277,6 +281,8 @@ The **sellers table** meets data quality standards in terms of **data types,** *
 
 ## 1.8. table: geolocation
 
+The **geolocation table** meets data quality standards in terms of **data types,** **non-null values**, and **uniqueness of records**.
+
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
 |geolocation_zip_code_prefix|int|1000163|1000163|0|0.00|
@@ -287,6 +293,8 @@ The **sellers table** meets data quality standards in terms of **data types,** *
 
 
 ## 1.9. table: product_category_name_translation
+
+The **product_category_name_translation table** meets data quality standards in terms of **data types,** **non-null values**, and **uniqueness of records**.
 
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
