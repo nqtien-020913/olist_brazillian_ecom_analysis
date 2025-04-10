@@ -225,6 +225,15 @@ The **order_payments table** meets data quality standards in terms of **data typ
 
 The **order_reviews table** contains valid data types across all columns. However, two columns, **review_comment_title** and **review_comment_message**, have a high percentage of missing values—approximately **88%** and **59%**, respectively—requiring further handling and consideration.
 
+There are three scenarios identified regarding the missing values in the two columns review_comment_title and review_comment_message:
+- (1) Both columns are NULL
+- (2) Only review_comment_title is NULL
+- (3) Only review_comment_message is NULL
+
+Proposed Handling Strategy:
+- For **case (1)**, where both fields are NULL, we will fill them with "only score" to indicate that the reviewer provided a rating without leaving any comment.
+- For **case (2)**, where only review_comment_title is NULL, we will fill it with "non review title" to maintain consistency.
+- For **case (3)**, where only review_comment_message is NULL, we will fill it with "non review message" accordingly.
 
 ```sql
 -- Address Missing Values of review_comment_title column and review_comment_message column
@@ -245,7 +254,9 @@ SET
 **Table 11:** Duplicates Check: order_payments Table
 |Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
 |---|---|---|
-|99224|98673|DUPLICATE EXISTS|
+|99224|99224|UNIQUE|
+
+
 
 ## 1.5. table: customers
 
