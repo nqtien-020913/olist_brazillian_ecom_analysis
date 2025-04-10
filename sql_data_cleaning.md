@@ -26,7 +26,9 @@ WHERE TABLE_NAME = @table_name;
 
 SET @sql = LEFT(@sql, LEN(@sql) - 10);
 EXEC sp_executesql @sql;
+```
 
+```sql
 -- DUPLICATE_CHECK
 DECLARE @table_name NVARCHAR(MAX) = 'orders';  -- Tên bảng của em
 DECLARE @key_columns NVARCHAR(MAX) = 'order_id'; -- Cột hoặc tổ hợp cột dùng làm khóa chính
