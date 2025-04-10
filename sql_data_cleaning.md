@@ -212,7 +212,7 @@ The **order_payments table** meets data quality standards in terms of **data typ
 
 ## 1.4. table: order_reviews
 
-**Table 10:** Data Type and Null Value Check: order_payments Table
+**Table 10:** Data Type and Null Value Check: order_reviews Table
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
 |review_id|nvarchar|99224|99224|0|0.00|
@@ -251,17 +251,71 @@ SET
                         end
 ```
 
-**Table 11:** Duplicates Check: order_payments Table
+**Table 11:** Duplicates Check: order_reviews Table
 |Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
 |---|---|---|
 |99224|99224|UNIQUE|
 
+For the **order_reviews** table, the composite key consisting of **order_id** and **review_id** ensures that there are **no duplicate records**.
 
+**However**, based on the dataset context (see **ReadME.md**), it is stated that:
+
+> “After a customer purchases the product from Olist Store, a seller gets notified to fulfill that order. Once the customer receives the product, or the estimated delivery date is due, the customer gets a satisfaction survey by email where they can rate their purchase experience and leave comments.”
+
+This means that each order **should only be reviewed after the customer has received the product**.
+
+Therefore, any reviews linked to orders that were cancelled, not yet delivered, or submitted before the product was delivered are considered invalid and will be removed from the dataset (see **table 12**).
+
+```sql
+-- code for table 12
+with table_valid AS (
+    SELECT orv.*
+        , order_delivered_customer_date
+        , case
+            when review_creation_date > order_delivered_customer_date then 'valid'
+            when review_creation_date < order_delivered_customer_date then 'before_completed'
+            when order_delivered_customer_date is null then 'non_completed'
+        end as review_validation
+    FROM order_reviews_backup orv
+    JOIN orders od on orv.order_id = od.order_id
+)
+SELECT review_validation
+    , count(*) as n_reviews
+FROM table_valid
+GROUP BY review_validation;
+```
+
+**Table 12:** Validating review records from customers
+|review_validation|n_reviews|
+|---|---|
+|non_completed|2865|
+|valid|88039|
+|before_completed|8320|
+
+```sql
+-- Address incompatible records
+with table_valid AS (
+    SELECT orv.*
+        , order_delivered_customer_date
+        , case
+            when review_creation_date > order_delivered_customer_date then 'valid'
+            when review_creation_date < order_delivered_customer_date then 'before_completed'
+            when order_delivered_customer_date is null then 'non_completed'
+        end as review_validation
+    FROM order_reviews_backup orv
+    JOIN orders od on orv.order_id = od.order_id
+)
+DELETE 
+FROM order_reviews_backup
+WHERE order_id IN (select order_id from table_valid where review_validation IN ('before_completed', 'non_completed'))
+    and review_id IN (select review_id from table_valid where review_validation IN ('before_completed', 'non_completed'))
+```
 
 ## 1.5. table: customers
 
 The **customers table** meets data quality standards in terms of **data types,** **non-null values**, and **uniqueness of records**.
 
+**Table 13:** Data Type and Null Value Check: customers Table
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
 |customer_id|nvarchar|99441|99441|0|0.00|
@@ -270,12 +324,14 @@ The **customers table** meets data quality standards in terms of **data types,**
 |customer_city|nvarchar|99441|99441|0|0.00|
 |customer_state|nvarchar|99441|99441|0|0.00|
 
+**Table 14:** Duplicates Check: customers Table
 |Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
 |---|---|---|
 |99441|99441|UNIQUE|
 
 ## 1.6. table: products
 
+**Table 13:** Data Type and Null Value Check: products Table
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
 |product_id|nvarchar|32951|32951|0|0.00|
@@ -288,14 +344,36 @@ The **customers table** meets data quality standards in terms of **data types,**
 |product_height_cm|tinyint|32951|32949|2|0.01|
 |product_width_cm|tinyint|32951|32949|2|0.01|
 
+**Table 14:** Duplicates Check: products Table
 |Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
 |---|---|---|
 |32951|32951|UNIQUE|
+
+The products table has valid data types and contains no duplicate records. However, the table has a significant number of NULL values across many columns (with product_id as the primary key). Specifically:
+- Four columns have identical NULL rates of 1.85%: product_category_name, product_name_length, product_description_length, and product_photos_qty.
+- Another four columns have identical NULL rates of 0.01%: product_weight_g, product_length_cm, product_height_cm, and product_width_cm.
+
+Among these, only the **product_category_name** column can be reasonably imputed with the value "**unknown**", indicating an unspecified product category.
+
+The **remaining columns** are **numerical**, and replacing NULLs with "unknown" would be **incompatible** with their data type. Furthermore, there is no reliable reference to impute appropriate values. Therefore, these missing values will be ignored during the analysis. Given that the proportion of missing values is relatively low, their impact on the final analysis results is expected to be minimal.
+
+```sql
+-- create products_backup table
+SELECT *
+INTO products_backup
+FROM products2;
+
+-- address missing values in product_category_name column
+Update products_backup
+    SET product_category_name = 'unknown'
+WHERE product_category_name is null
+```
 
 ## 1.7. table: sellers
 
 The **sellers table** meets data quality standards in terms of **data types,** **non-null values**, and **uniqueness of records**.
 
+**Table 15:** Data Type and Null Value Check: products Table
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
 |seller_id|nvarchar|3095|3095|0|0.00|
@@ -303,13 +381,14 @@ The **sellers table** meets data quality standards in terms of **data types,** *
 |seller_city|nvarchar|3095|3095|0|0.00|
 |seller_state|nvarchar|3095|3095|0|0.00|
 
+**Table 16:** Duplicates Check: products Table
 |Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
 |---|---|---|
 |3095|3095|UNIQUE|
 
 ## 1.8. table: geolocation
 
-The **geolocation table** meets data quality standards in terms of **data types,** **non-null values**, and **uniqueness of records**.
+The **geolocation table** meets data quality standards in terms of **data types,** **non-null values**, and ....
 
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
@@ -319,7 +398,6 @@ The **geolocation table** meets data quality standards in terms of **data types,
 |geolocation_city|nvarchar|1000163|1000163|0|0.00|
 |geolocation_state|nvarchar|1000163|1000163|0|0.00|
 
-
 ## 1.9. table: product_category_name_translation
 
 The **product_category_name_translation table** meets data quality standards in terms of **data types,** **non-null values**, and **uniqueness of records**.
@@ -328,5 +406,9 @@ The **product_category_name_translation table** meets data quality standards in 
 |---|---|---|---|---|---|
 |product_category_name|nvarchar|71|71|0|0.00|
 |product_category_name_english|nvarchar|71|71|0|0.00|
+
+|Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
+|---|---|---|
+|71|71|UNIQUE|
 
 
