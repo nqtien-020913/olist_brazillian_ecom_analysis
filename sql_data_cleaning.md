@@ -113,7 +113,7 @@ This approach is based on the following observations:
 ```sql
 select format(order_purchase_timestamp, 'yyyy-MM') as year_month
     , avg(datediff(hour, order_purchase_timestamp, order_approved_at)) as avg_approve_hour
-from orders2
+from orders
 where order_approved_at is not null
 group by format(order_purchase_timestamp, 'yyyy-MM')
 order by year_month;
@@ -167,6 +167,31 @@ Since only two orders are affected, they will be handled as follows:
 |---|---|---|---|---|---|---|---|
 |2aa91108853cecb43c84a5dc5b277475|afeb16c7f46396c0ed54acb45ccaaa40|delivered|2017-09-29 08:52:58.0000000|2017-09-29 09:07:16.0000000|NULL|2017-11-20 19:44:47.0000000|2017-11-14 00:00:00.0000000|
 |2d858f451373b04fb5c984a1cc2defaf|e08caf668d499a6d643dafd7c5cc498a|delivered|2017-05-25 23:22:43.0000000|2017-05-25 23:30:16.0000000|NULL|NULL|2017-06-23 00:00:00.0000000|
+
+```sql
+-- addressing missing values for case 01
+update orders
+Set order_status = 'canceled'
+where order_delivered_carrier_date is null
+    and order_status = 'delivered'
+    and order_delivered_customer_date is null;
+```
+
+```sql
+-- addressing missing values for case 02
+with table_relace AS (
+    select format(order_purchase_timestamp, 'yyyy-MM-dd') as purchase_date
+        , avg(datediff(hour, order_purchase_timestamp, order_approved_at)) as avg_approve_hour
+    from orders
+    where order_delivered_carrier_date is not null
+    group by format(order_purchase_timestamp, 'yyyy-MM-dd')
+)
+UPDATE orders
+SET 
+    order_delivered_carrier_date = dateadd(hour,(select avg_approve_hour from table_relace where purchase_date = '2017-09-29'),order_approved_at)
+WHERE order_delivered_carrier_date is null
+    and order_status = 'delivered';
+```
 
 ### 1.3. Addressing missing value: order_delivered_customer_date column
 
@@ -236,8 +261,15 @@ Proposed Handling Strategy:
 - For **case (3)**, where only review_comment_message is NULL, we will fill it with "non review message" accordingly.
 
 ```sql
+-- Create order_reviews_backup for addressing missing values
+Select *
+INTO order_reviews_backup
+from order_reviews;
+```
+
+```sql
 -- Address Missing Values of review_comment_title column and review_comment_message column
-UPDATE order_reviews_backup
+UPDATE order_reviews
 SET
     review_comment_title = case
                             when (review_comment_title is null) and (review_comment_message is null) then 'just score'
@@ -276,7 +308,7 @@ with table_valid AS (
             when review_creation_date < order_delivered_customer_date then 'before_completed'
             when order_delivered_customer_date is null then 'non_completed'
         end as review_validation
-    FROM order_reviews_backup orv
+    FROM order_reviews orv
     JOIN orders od on orv.order_id = od.order_id
 )
 SELECT review_validation
@@ -302,7 +334,7 @@ with table_valid AS (
             when review_creation_date < order_delivered_customer_date then 'before_completed'
             when order_delivered_customer_date is null then 'non_completed'
         end as review_validation
-    FROM order_reviews_backup orv
+    FROM order_reviews orv
     JOIN orders od on orv.order_id = od.order_id
 )
 DELETE 
@@ -350,8 +382,8 @@ The **customers table** meets data quality standards in terms of **data types,**
 |32951|32951|UNIQUE|
 
 The products table has valid data types and contains no duplicate records. However, the table has a significant number of NULL values across many columns (with product_id as the primary key). Specifically:
-- Four columns have identical NULL rates of 1.85%: product_category_name, product_name_length, product_description_length, and product_photos_qty.
-- Another four columns have identical NULL rates of 0.01%: product_weight_g, product_length_cm, product_height_cm, and product_width_cm.
+- Four columns have identical NULL rates of **1.85%**: product_category_name, product_name_length, product_description_length, and product_photos_qty.
+- Another four columns have identical NULL rates of **0.01%**: product_weight_g, product_length_cm, product_height_cm, and product_width_cm.
 
 Among these, only the **product_category_name** column can be reasonably imputed with the value "**unknown**", indicating an unspecified product category.
 
@@ -361,10 +393,10 @@ The **remaining columns** are **numerical**, and replacing NULLs with "unknown" 
 -- create products_backup table
 SELECT *
 INTO products_backup
-FROM products2;
+FROM products;
 
 -- address missing values in product_category_name column
-Update products_backup
+Update products
     SET product_category_name = 'unknown'
 WHERE product_category_name is null
 ```
