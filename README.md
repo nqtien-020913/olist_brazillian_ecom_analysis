@@ -33,7 +33,7 @@ By leveraging data holistically, businesses can make smarter decisions, optimize
 
 </div>
 
-> 📊The ... can be downloaded [here](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce).
+> 📊The Olist E-commerce dataset can be downloaded [here](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce).
 
 > 📊The SQL queries utilized to inspect and perform quality checks can be found here.
 
