@@ -500,6 +500,9 @@ SELECT *
 FROM order_reviews;
 
 SELECT *
+FROM order_payments;
+
+SELECT *
 FROM products;
 
 SELECT *
