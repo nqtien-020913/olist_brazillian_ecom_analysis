@@ -153,6 +153,27 @@ group by delivery_status;
 |late|12|
 |ontime|10|
 
+```sql
+-- Addressing missing values' order_approved_at
+with table_relace AS (
+    select format(order_purchase_timestamp, 'yyyy-MM') as year_month
+        , avg(datediff(hour, order_purchase_timestamp, order_approved_at)) as avg_approve_hour
+    from orders
+    where order_approved_at is not null
+    group by format(order_purchase_timestamp, 'yyyy-MM')
+)
+UPDATE orders
+SET 
+    order_approved_at = case 
+                            when format(order_purchase_timestamp, 'yyyy-MM') = '2017-01' 
+                                then dateadd(hour,(select avg_approve_hour from table_relace where year_month = '2017-01'),order_purchase_timestamp)
+                            when format(order_purchase_timestamp, 'yyyy-MM') = '2017-02' 
+                                then dateadd(hour,(select avg_approve_hour from table_relace where year_month = '2017-02'),order_purchase_timestamp)
+                            end
+WHERE order_approved_at is null
+    and order_status = 'delivered';
+```
+
 ### 1.2. Addressing missing value: order_delivered_carrier_date column
 
 For the column order_delivered_carrier_date, NULL values fall into the following **statuses**:
