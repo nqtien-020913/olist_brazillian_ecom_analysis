@@ -487,4 +487,30 @@ The **product_category_name_translation table** meets data quality standards in 
 |---|---|---|
 |71|71|UNIQUE|
 
+## II. EXPORT DATASET
 
+```sql
+SELECT *
+FROM orders;
+
+SELECT *
+FROM order_items;
+
+SELECT *
+FROM order_reviews;
+
+SELECT *
+FROM products;
+
+SELECT *
+FROM customers;
+
+SELECT *
+FROM sellers;
+
+SELECT *
+FROM product_category_name_translation;
+
+SELECT *
+FROM geolocation;
+```
