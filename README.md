@@ -35,7 +35,7 @@ By leveraging data holistically, businesses can make smarter decisions, optimize
 
 > 📊The Olist E-commerce dataset can be downloaded [here](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce).
 
-> 📊The SQL queries utilized to inspect and perform quality checks can be found here.
+> 📊The SQL queries utilized to inspect and perform quality checks can be found [here](https://github.com/nqtien-020913/olist_brazillian_ecom_analysis/blob/59eebf6e315bb6db192b970aedd463e39b6364a4/sql_data_cleaning.md).
 
 > 📊Targeted Power BI for various business questions can be found here.
 
