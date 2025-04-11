@@ -482,7 +482,7 @@ The **product_category_name_translation table** meets data quality standards in 
 |product_category_name|nvarchar|71|71|0|0.00|
 |product_category_name_english|nvarchar|71|71|0|0.00|
 
-**Table 18:** Duplicates Check: product_category_name_translation Table
+**Table 20:** Duplicates Check: product_category_name_translation Table
 |Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
 |---|---|---|
 |71|71|UNIQUE|
