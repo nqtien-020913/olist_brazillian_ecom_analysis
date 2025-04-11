@@ -204,14 +204,14 @@ where order_delivered_carrier_date is null
 -- addressing missing values for case 02
 with table_relace AS (
     select format(order_purchase_timestamp, 'yyyy-MM-dd') as purchase_date
-        , avg(datediff(hour, order_purchase_timestamp, order_approved_at)) as avg_approve_hour
+        , avg(datediff(hour, order_approved_at, order_delivered_carrier_date)) as avg_carrier_hour
     from orders
     where order_delivered_carrier_date is not null
     group by format(order_purchase_timestamp, 'yyyy-MM-dd')
 )
 UPDATE orders
 SET 
-    order_delivered_carrier_date = dateadd(hour,(select avg_approve_hour from table_relace where purchase_date = '2017-09-29'),order_approved_at)
+    order_delivered_carrier_date = dateadd(hour,(select avg_carrier_hour from table_relace where purchase_date = '2017-09-29'), order_approved_at)
 WHERE order_delivered_carrier_date is null
     and order_status = 'delivered';
 ```
@@ -443,8 +443,9 @@ The **sellers table** meets data quality standards in terms of **data types,** *
 
 ## 1.8. table: geolocation
 
-The **geolocation table** meets data quality standards in terms of **data types,** **non-null values**, and ....
+The geolocation table meets data quality standards in terms of **data types** and **non-null values**. However, it contains **duplicate records**, which need to be addressed.
 
+**Table 17:** Data Type and Null Value Check: geolocation Table
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
 |geolocation_zip_code_prefix|int|1000163|1000163|0|0.00|
@@ -453,15 +454,35 @@ The **geolocation table** meets data quality standards in terms of **data types,
 |geolocation_city|nvarchar|1000163|1000163|0|0.00|
 |geolocation_state|nvarchar|1000163|1000163|0|0.00|
 
+**Table 18:** Duplicates Check: geolocation Table
+|Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
+|---|---|---|
+|1000163|27912|DUPLICATE EXISTS|
+
+```sql
+-- addressing duplicate records
+WITH CTE AS (
+    SELECT *, 
+           ROW_NUMBER() OVER(PARTITION BY geolocation_zip_code_prefix 
+                                            , geolocation_city
+                                            , geolocation_state 
+                            ORDER BY (SELECT NULL)) AS rn
+    FROM geolocation
+)
+DELETE FROM CTE WHERE rn > 1;
+```
+
 ## 1.9. table: product_category_name_translation
 
 The **product_category_name_translation table** meets data quality standards in terms of **data types,** **non-null values**, and **uniqueness of records**.
 
+**Table 19:** Data Type and Null Value Check: product_category_name_translation Table
 |Column_Name|Data_Type|Total_Rows|Non_NULLs|NULLs|NULL_Percent|
 |---|---|---|---|---|---|
 |product_category_name|nvarchar|71|71|0|0.00|
 |product_category_name_english|nvarchar|71|71|0|0.00|
 
+**Table 18:** Duplicates Check: product_category_name_translation Table
 |Total_Rows|Unique_Key_Combinations|Key_Uniqueness_Status|
 |---|---|---|
 |71|71|UNIQUE|
